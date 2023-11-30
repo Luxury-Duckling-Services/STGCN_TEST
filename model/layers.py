@@ -248,6 +248,9 @@ class STConvBlock(nn.Module):
         self.dropout = nn.Dropout(p=droprate)
 
     def forward(self, x):
+
+        print("STConvBlock Input x size: ", x.size() )
+        
         x = self.tmp_conv1(x)
         x = self.graph_conv(x)
         x = self.relu(x)
@@ -255,6 +258,8 @@ class STConvBlock(nn.Module):
         x = self.tc2_ln(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         x = self.dropout(x)
 
+        print("STConvBlock Output x size: ", x.size() )
+        
         return x
 
 class OutputBlock(nn.Module):
@@ -274,11 +279,47 @@ class OutputBlock(nn.Module):
         self.dropout = nn.Dropout(p=droprate)
 
     def forward(self, x):
+
+        print("OutputBlock Input x size: ", x.size() )
+        
         x = self.tmp_conv1(x)
         x = self.tc1_ln(x.permute(0, 2, 3, 1))
         x = self.fc1(x)
         x = self.relu(x)
         x = self.dropout(x)
         x = self.fc2(x).permute(0, 3, 1, 2)
+
+        print("OutputBlock Output x size: ", x.size() )
+
+        return x
+
+class MiddleBlock(nn.Module):
+    # Output block contains 'TNFF' structure
+    # T: Gated Temporal Convolution Layer (GLU or GTU)
+    # N: Layer Normolization
+    # F: Fully-Connected Layer
+    # F: Fully-Connected Layer
+
+    def __init__(self, Ko, last_block_channel, channels, end_channel, n_vertex, act_func, bias, droprate):
+        super(OutputBlock, self).__init__()
+        self.tmp_conv1 = TemporalConvLayer(Ko, last_block_channel, channels[0], n_vertex, act_func)
+        self.fc1 = nn.Linear(in_features=channels[0], out_features=channels[1], bias=bias)
+        self.fc2 = nn.Linear(in_features=channels[1], out_features=end_channel, bias=bias)
+        self.tc1_ln = nn.LayerNorm([n_vertex, channels[0]])
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=droprate)
+
+    def forward(self, x):
+
+        print("OutputBlock Input x size: ", x.size() )
+        
+        x = self.tmp_conv1(x)
+        x = self.tc1_ln(x.permute(0, 2, 3, 1))
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x).permute(0, 3, 1, 2)
+
+        print("OutputBlock Output x size: ", x.size() )
 
         return x

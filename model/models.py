@@ -30,6 +30,15 @@ class STGCNChebGraphConv(nn.Module):
         modules = []
         for l in range(len(blocks) - 3):
             modules.append(layers.STConvBlock(args.Kt, args.Ks, n_vertex, blocks[l][-1], blocks[l+1], args.act_func, args.graph_conv_type, args.gso, args.enable_bias, args.droprate))
+
+            # add middle blocks
+            
+            #if l != len(blocks) - 4:
+            #    modules.append( layers.MiddleBlock() )
+        
+        # print out everything except the output layer
+        print("Modules: ", modules)
+        
         self.st_blocks = nn.Sequential(*modules)
         Ko = args.n_his - (len(blocks) - 3) * 2 * (args.Kt - 1)
         self.Ko = Ko
