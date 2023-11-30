@@ -16,6 +16,8 @@ import torch.utils as utils
 from script import dataloader, utility, earlystopping
 from model import models
 
+import matplotlib.pyplot as plt
+
 #import nni
 
 def set_env(seed):
@@ -160,6 +162,10 @@ def prepare_model(args, blocks, n_vertex):
     return loss, es, model, optimizer, scheduler
 
 def train(loss, args, optimizer, scheduler, es, model, train_iter, val_iter):
+    
+    train_loss_history = []
+    val_loss_history = []
+    
     for epoch in range(args.epochs):
         l_sum, n = 0.0, 0  # 'l_sum' is epoch sum loss, 'n' is epoch instance number
         model.train()
@@ -173,6 +179,7 @@ def train(loss, args, optimizer, scheduler, es, model, train_iter, val_iter):
             n += y.shape[0]
         scheduler.step()
         val_loss = val(model, val_iter)
+        train_loss = l_sum / n
         # GPU memory usage
         gpu_mem_alloc = torch.cuda.max_memory_allocated() / 1000000 if torch.cuda.is_available() else 0
         print('Epoch: {:03d} | Lr: {:.20f} |Train loss: {:.6f} | Val loss: {:.6f} | GPU occupy: {:.6f} MiB'.\
@@ -181,6 +188,23 @@ def train(loss, args, optimizer, scheduler, es, model, train_iter, val_iter):
         if es.step(val_loss):
             print('Early stopping.')
             break
+            
+        train_loss_history.append( train_loss )
+        val_loss_history.append( val_loss )
+    
+    return train_loss_history , val_loss_history
+
+def plot_curves(train_loss_history, val_loss_history):
+    
+    plt.plot(train_loss_history, "g-o" , val_loss_history , "r-o")
+    plt.title("Loss (Mean Absolute Error)")         
+    plt.xlabel("Epoch")
+    plt.xticks(range(0,len(train_loss_history) ) )
+    plt.legend(["Train", "Validation"])
+    if args.middle_layer == True:
+        plt.savefig(str(args.stblock_num) + " " + str(args.Ks)  +'.png')
+    else:
+        plt.savefig('default.png')
 
 @torch.no_grad()
 def val(model, val_iter):
@@ -209,5 +233,7 @@ if __name__ == "__main__":
     args, device, blocks = get_parameters()
     n_vertex, zscore, train_iter, val_iter, test_iter = data_preparate(args, device)
     loss, es, model, optimizer, scheduler = prepare_model(args, blocks, n_vertex)
-    train(loss, args, optimizer, scheduler, es, model, train_iter, val_iter)
+    train_loss_history, val_loss_history = train(loss, args, optimizer, scheduler, es, model, train_iter, val_iter)
     test(zscore, loss, model, test_iter, args)
+
+    plot_curves(train_loss_history, val_loss_history)

@@ -28,19 +28,36 @@ class STGCNChebGraphConv(nn.Module):
     def __init__(self, args, blocks, n_vertex):
         super(STGCNChebGraphConv, self).__init__()
         modules = []
+
+        Ko = args.n_his - (len(blocks) - 3) * 2 * (args.Kt - 1)
+
         for l in range(len(blocks) - 3):
             modules.append(layers.STConvBlock(args.Kt, args.Ks, n_vertex, blocks[l][-1], blocks[l+1], args.act_func, args.graph_conv_type, args.gso, args.enable_bias, args.droprate))
 
-            # add middle blocks
+        ######
             
-            #if l != len(blocks) - 4:
-            #    modules.append( layers.MiddleBlock() )
-        
+            # add middle blocks
+
+            if args.middle_layer == True:
+                if l != len(blocks) - 4:
+                    K = 2
+                    modules.append( layers.MiddleBlock(K, 64, blocks[-2], 64, n_vertex, args.act_func, args.enable_bias, args.droprate ) )
+
+                if args.stblock_num == 1:
+                    Ko = 10
+            
+                if args.stblock_num == 2:
+                    Ko = 7
+            
+                if args.stblock_num == 3:
+                    Ko = 4
+                
         # print out everything except the output layer
         print("Modules: ", modules)
+
+        ######
         
         self.st_blocks = nn.Sequential(*modules)
-        Ko = args.n_his - (len(blocks) - 3) * 2 * (args.Kt - 1)
         self.Ko = Ko
         if self.Ko > 1:
             self.output = layers.OutputBlock(Ko, blocks[-3][-1], blocks[-2], blocks[-1][0], n_vertex, args.act_func, args.enable_bias, args.droprate)

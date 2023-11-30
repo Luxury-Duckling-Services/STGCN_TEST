@@ -70,6 +70,9 @@ class TemporalConvLayer(nn.Module):
     #param x: tensor, [bs, c_in, ts, n_vertex]
 
     def __init__(self, Kt, c_in, c_out, n_vertex, act_func):
+
+        # TemporalConvLayer(Ko, last_block_channel, channels[0], n_vertex, act_func)
+        
         super(TemporalConvLayer, self).__init__()
         self.Kt = Kt
         self.c_in = c_in
@@ -249,7 +252,7 @@ class STConvBlock(nn.Module):
 
     def forward(self, x):
 
-        print("STConvBlock Input x size: ", x.size() )
+        #print("STConvBlock Input x size: ", x.size() )
         
         x = self.tmp_conv1(x)
         x = self.graph_conv(x)
@@ -258,7 +261,7 @@ class STConvBlock(nn.Module):
         x = self.tc2_ln(x.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         x = self.dropout(x)
 
-        print("STConvBlock Output x size: ", x.size() )
+        #print("STConvBlock Output x size: ", x.size() )
         
         return x
 
@@ -280,7 +283,7 @@ class OutputBlock(nn.Module):
 
     def forward(self, x):
 
-        print("OutputBlock Input x size: ", x.size() )
+        #print("OutputBlock Input x size: ", x.size() )
         
         x = self.tmp_conv1(x)
         x = self.tc1_ln(x.permute(0, 2, 3, 1))
@@ -289,19 +292,14 @@ class OutputBlock(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x).permute(0, 3, 1, 2)
 
-        print("OutputBlock Output x size: ", x.size() )
+        #print("OutputBlock Output x size: ", x.size() )
 
         return x
 
 class MiddleBlock(nn.Module):
-    # Output block contains 'TNFF' structure
-    # T: Gated Temporal Convolution Layer (GLU or GTU)
-    # N: Layer Normolization
-    # F: Fully-Connected Layer
-    # F: Fully-Connected Layer
 
     def __init__(self, Ko, last_block_channel, channels, end_channel, n_vertex, act_func, bias, droprate):
-        super(OutputBlock, self).__init__()
+        super(MiddleBlock, self).__init__()
         self.tmp_conv1 = TemporalConvLayer(Ko, last_block_channel, channels[0], n_vertex, act_func)
         self.fc1 = nn.Linear(in_features=channels[0], out_features=channels[1], bias=bias)
         self.fc2 = nn.Linear(in_features=channels[1], out_features=end_channel, bias=bias)
@@ -311,8 +309,8 @@ class MiddleBlock(nn.Module):
 
     def forward(self, x):
 
-        print("OutputBlock Input x size: ", x.size() )
-        
+        #print("MiddleBlock Input x size: ", x.size() )
+
         x = self.tmp_conv1(x)
         x = self.tc1_ln(x.permute(0, 2, 3, 1))
         x = self.fc1(x)
@@ -320,6 +318,6 @@ class MiddleBlock(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x).permute(0, 3, 1, 2)
 
-        print("OutputBlock Output x size: ", x.size() )
+        #print("MiddleBlock Output x size: ", x.size() )
 
         return x
